@@ -1,2 +1,2 @@
-model_checkpoint_path: "model.ckpt"
-all_model_checkpoint_paths: "model.ckpt"
+model_checkpoint_path: "fc2.ckpt"
+all_model_checkpoint_paths: "fc2.ckpt"

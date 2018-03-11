@@ -1,6 +1,7 @@
 import math as m
 import numpy as np
 import tensorflow as tf
+import cv2
 from enc import to_one_hot
 from ifmnist import if_mnist
 
@@ -20,68 +21,74 @@ def label():
         return tf.placeholder(tf.int64, [None], name="label")
 
 
-def nn_layers(img_node, ws: int, hs: int,
+def keep_prob():
+    with tf.name_scope("hyper"):
+        return tf.placeholder(tf.float32, name="keep_prob")
+
+
+def nn_layers(img_node, keep_prob_node,
+              ws: int, hs: int,
               c1: int, c1s: int, c1d: int, p1s: int,
               c2: int, c2s: int, c2d: int, p2s: int,
               fc1s: int,
-              keep_prob: float,
               num_classes: int):
     with tf.name_scope("c1"):
-        weights = tf.Variable(tf.truncated_normal([c1, c1, 1, c1d], stddev=0.1),
-                              name="w")
-        biases = tf.Variable(tf.zeros([c1d]), name="b")
-        conv = tf.nn.relu(tf.nn.conv2d(img_node, weights,
-                                       strides=[c1s, c1s, c1s, c1s],
-                                       padding="SAME",
-                                       name="conv") + biases)
+        w1 = tf.Variable(tf.truncated_normal([c1, c1, 1, c1d], stddev=0.1),
+                         name="w")
+        b1 = tf.Variable(tf.zeros([c1d]), name="b")
+        conv1 = tf.nn.relu(tf.nn.conv2d(img_node, w1,
+                                        strides=[c1s, c1s, c1s, c1s],
+                                        padding="SAME",
+                                        name="conv") + b1)
 
     with tf.name_scope("p1"):
-        pool = tf.nn.max_pool(conv,
-                              ksize=[1, p1s, p1s, 1],
-                              strides=[1, p1s, p1s, 1],
-                              padding="SAME",
-                              name="pool")
+        pool1 = tf.nn.max_pool(conv1,
+                               ksize=[1, p1s, p1s, 1],
+                               strides=[1, p1s, p1s, 1],
+                               padding="SAME",
+                               name="pool")
 
     with tf.name_scope("c2"):
-        weights = tf.Variable(tf.truncated_normal([c2, c2, c1d, c2d], stddev=0.1),
-                              name="w")
-        biases = tf.Variable(tf.zeros([c2d]), name="b")
-        conv = tf.nn.relu(tf.nn.conv2d(pool, weights,
-                                       strides=[c2s, c2s, c2s, c2s],
-                                       padding="SAME",
-                                       name="conv") + biases)
+        w2 = tf.Variable(tf.truncated_normal([c2, c2, c1d, c2d], stddev=0.1),
+                         name="w")
+        b2 = tf.Variable(tf.zeros([c2d]), name="b")
+        conv2 = tf.nn.relu(tf.nn.conv2d(pool1, w2,
+                                        strides=[c2s, c2s, c2s, c2s],
+                                        padding="SAME",
+                                        name="conv") + b2)
 
     with tf.name_scope("p2"):
-        pool = tf.nn.max_pool(conv,
-                              ksize=[1, p2s, p2s, 1],
-                              strides=[1, p2s, p2s, 1],
-                              padding="SAME",
-                              name="pool")
+        pool2 = tf.nn.max_pool(conv2,
+                               ksize=[1, p2s, p2s, 1],
+                               strides=[1, p2s, p2s, 1],
+                               padding="SAME",
+                               name="pool")
 
-    with tf.name_scope("fc1"):
+    with tf.name_scope("fc"):
         fws = ws // p1s // p2s
         fhs = hs // p1s // p2s
         fc1is = fws*fhs*c2d
-        weights = tf.Variable(tf.truncated_normal([fc1is, fc1s], stddev=1.0/m.sqrt(float(fc1is))),
-                              name="w")
-        biases = tf.Variable(tf.zeros([fc1s]), name="b")
-        x = tf.reshape(pool, [-1, fc1is])
-        fc = tf.nn.relu(tf.matmul(x, weights) + biases, name="fc")
+        w3 = tf.Variable(tf.truncated_normal([fc1is, fc1s], stddev=1.0/m.sqrt(float(fc1is))),
+                         name="w")
+        b3 = tf.Variable(tf.zeros([fc1s]), name="b")
+        pool2_f = tf.reshape(pool2, [-1, fc1is])
+        fc = tf.nn.relu(tf.matmul(pool2_f, w3) + b3, name="fc")
 
     with tf.name_scope("dropout"):
-        fc_drop = tf.nn.dropout(fc, keep_prob)
+        fc_drop = tf.nn.dropout(fc, keep_prob_node)
 
     with tf.name_scope("output"):
-        weights = tf.Variable(tf.truncated_normal([fc1s, num_classes], stddev=1.0 / m.sqrt(float(fc1s))),
-                              name="w")
-        biases = tf.Variable(tf.zeros([num_classes]), name="b")
-        output_node = tf.nn.softmax(tf.add(tf.matmul(fc_drop, weights),
-                                           biases), name="output")
-        return output_node
+        w4 = tf.Variable(tf.truncated_normal([fc1s, num_classes], stddev=1.0 / m.sqrt(float(fc1s))),
+                         name="w")
+        b4 = tf.Variable(tf.zeros([num_classes]), name="b")
+        # output_node = tf.nn.softmax(tf.add(tf.matmul(fc_drop, w4),
+        #                                   b4), name="output")
+        return tf.add(tf.matmul(fc_drop, w4), b4, name="output")
 
 
 def loss(output_node, one_hot_node):
-    return tf.losses.mean_squared_error(one_hot_node, output_node)
+    ce = tf.losses.softmax_cross_entropy(one_hot_node, output_node)
+    return tf.reduce_mean(ce)
 
 
 def opt(loss_node, learning_rate: float):
@@ -101,7 +108,7 @@ class mnist_cnn(if_mnist):
     """
 
     def __init__(self, ws=28, hs=28, num_classes=10,
-                 num_iters=20000, batch_size=50):
+                 num_iters=200, batch_size=20):
         if_mnist.__init__(self)
         self.ws = ws
         self.hs = hs
@@ -136,11 +143,13 @@ class mnist_cnn(if_mnist):
         input_node = img(self.ws, self.hs)
         one_hot_node = one_hot(self.num_classes)
         label_node = label()
-        output_node = nn_layers(input_node,
+        keep_prob_node = keep_prob()
+        output_node = nn_layers(input_node, keep_prob_node,
                                 self.ws, self.hs,
                                 5, 1, 32, 2,
-                                7, 1, 64, 2,
-                                1024, 0.4, self.num_classes)
+                                5, 1, 64, 2,
+                                1024,
+                                self.num_classes)
         loss_node = loss(output_node, one_hot_node)
         opt_node = opt(loss_node, 0.001)
         eval_node = evaluate(output_node, label_node)
@@ -163,26 +172,32 @@ class mnist_cnn(if_mnist):
                 batch_img = tr_imgs[batch_idx]
                 batch_one_hots = tr_one_hots[batch_idx]
                 opt_node.run(feed_dict={input_node: batch_img,
-                                        one_hot_node: batch_one_hots})
-                if i % 10 == 0:
+                                        one_hot_node: batch_one_hots,
+                                        keep_prob_node: 0.5})
+                if i % 100 == 0:
                     # Evaluate current parameterization.
                     batch_idx2 = np.random.randint(0, len(te_imgs),
                                                    size=self.batch_size)
                     tr_accuracy = eval_node.eval(feed_dict={input_node: batch_img,
-                                                            label_node: tr_labels[batch_idx]})/self.batch_size
+                                                            label_node: tr_labels[batch_idx],
+                                                            keep_prob_node: 1.0})/self.batch_size
                     te_accuracy = eval_node.eval(feed_dict={input_node: te_imgs[batch_idx2],
-                                                            label_node: te_labels[batch_idx2]})/self.batch_size
+                                                            label_node: te_labels[batch_idx2],
+                                                            keep_prob_node: 1.0})/self.batch_size
                     l = loss_node.eval(feed_dict={input_node: batch_img,
-                                                  one_hot_node: batch_one_hots})
+                                                  one_hot_node: batch_one_hots,
+                                                  keep_prob_node: 1.0})
                     print("iteration: " + str(i))
                     print("training accuracy: " + str(tr_accuracy))
                     print("test accuracy: " + str(te_accuracy))
                     print("loss: " + str(l))
 
-            final_te_accuracy = eval_node.eval(feed_dict={input_node: te_imgs,
-                                                          label_node: te_labels}) / te_labels.shape[0]
-            print("final test accuracy: " + str(final_te_accuracy))
             saver.save(sess, sess_file)
+
+            final_te_accuracy = eval_node.eval(feed_dict={input_node: te_imgs,
+                                                          label_node: te_labels,
+                                                          keep_prob_node: 1.0}) / te_labels.shape[0]
+            print("final test accuracy: " + str(final_te_accuracy))
 
     def infer(self, imgs: np.ndarray, sess_file: str) -> np.ndarray:
         """produce inference on an array of images.
@@ -203,8 +218,10 @@ class mnist_cnn(if_mnist):
             graph = tf.get_default_graph()
 
             input_node = graph.get_tensor_by_name("input/x:0")
+            keep_prob_node = graph.get_tensor_by_name("hyper/keep_prob:0")
             output_node = graph.get_tensor_by_name("output/output:0")
 
             imgs = np.reshape(imgs, [len(imgs), self.ws, self.hs, 1])
-            result = sess.run(output_node, feed_dict={input_node: imgs})
+            result = sess.run(output_node, feed_dict={input_node: imgs,
+                                                      keep_prob_node: 1.0})
             return result

@@ -6,6 +6,7 @@ from mnist.loader import MNIST as mnist_dataset
 from improc import preprocess
 from ifmnist import if_mnist
 from impl.mnistfc import mnistfc
+from impl.mnistcnn import mnist_cnn
 
 
 def run(agent: if_mnist) -> None:
@@ -66,4 +67,4 @@ def run(agent: if_mnist) -> None:
 
 
 if __name__ == "__main__":
-    run(mnistfc())
+    run(mnist_cnn())

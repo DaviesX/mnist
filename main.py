@@ -9,7 +9,7 @@ from impl.mnistfc import mnistfc
 
 
 def run(agent: if_mnist) -> None:
-    if not os.path.isfile("checkpoint"):
+    if not os.path.isfile("./" + agent.name() + ".ckpt.meta"):
         print("start training process")
         dataset = mnist_dataset("./dataset")
         tr_imgs, tr_labels = dataset.load_training()
@@ -52,7 +52,7 @@ def run(agent: if_mnist) -> None:
                 x = np.reshape(preprocess(test_img), [1, 28*28])
                 pmf = agent.infer(x, "./" + agent.name() + ".ckpt")
                 best_prob = np.max(pmf)
-                best_label = np.where(pmf == best_prob)
+                best_label = np.where(pmf[0, :] == best_prob)[0]
                 print("best label: " + str(best_label))
                 print("best prob: " + str(best_prob))
 

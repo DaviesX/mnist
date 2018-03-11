@@ -108,7 +108,7 @@ class mnist_cnn(if_mnist):
     """
 
     def __init__(self, ws=28, hs=28, num_classes=10,
-                 num_iters=200, batch_size=20):
+                 num_iters=20000, batch_size=20):
         if_mnist.__init__(self)
         self.ws = ws
         self.hs = hs

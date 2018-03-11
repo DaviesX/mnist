@@ -39,13 +39,14 @@ def nn_layers(img_node, xs: int, h1s: int, h2s: int, num_classes: int):
         weights = tf.Variable(tf.truncated_normal([h2s, num_classes], stddev=1.0 / m.sqrt(float(h2s))),
                               name="w")
         biases = tf.Variable(tf.zeros([num_classes]), name="b")
-        output_node = tf.nn.softmax(tf.add(tf.matmul(hidden2, weights),
-                                           biases), name="output")
-        return output_node
+        output_node = tf.add(tf.matmul(hidden2, weights),
+                             biases, name="output")
+        sm_node = tf.nn.softmax(output_node, name="sm")
+        return output_node, sm_node
 
 
 def loss(output_node, one_hot_node):
-    return tf.losses.mean_squared_error(one_hot_node, output_node)
+    return tf.losses.mean_squared_error(one_hot_node, tf.nn.softmax(output_node))
 
 
 def opt(loss_node, learning_rate: float):
@@ -57,7 +58,7 @@ def opt(loss_node, learning_rate: float):
 
 def evaluate(output_node, label_node):
     correct = tf.equal(tf.argmax(output_node, axis=1), label_node)
-    return tf.reduce_sum(tf.cast(correct, tf.int32))
+    return tf.reduce_mean(tf.cast(correct, tf.float32))
 
 
 class mnistfc(if_mnist):
@@ -65,7 +66,7 @@ class mnistfc(if_mnist):
     """
 
     def __init__(self, ws=28, hs=28, num_classes=10,
-                 num_iters=1000000, batch_size=100):
+                 num_iters=20000, batch_size=1000):
         if_mnist.__init__(self)
         self.ws = ws
         self.hs = hs
@@ -100,12 +101,12 @@ class mnistfc(if_mnist):
         input_node = img(self.ws, self.hs)
         one_hot_node = one_hot(self.num_classes)
         label_node = label()
-        output_node = nn_layers(input_node,
-                                int(self.ws * self.hs),
-                                int((self.ws / 2 - 4) *
-                                    (self.ws / 2 - 4)),
-                                int(2*self.num_classes + 5),
-                                self.num_classes)
+        output_node, _ = nn_layers(input_node,
+                                   int(self.ws * self.hs),
+                                   int((self.ws / 2 - 4) *
+                                       (self.ws / 2 - 4)),
+                                   int(2*self.num_classes + 5),
+                                   self.num_classes)
         loss_node = loss(output_node, one_hot_node)
         opt_node = opt(loss_node, 0.001)
         eval_node = evaluate(output_node, label_node)
@@ -134,9 +135,9 @@ class mnistfc(if_mnist):
                     batch_idx2 = np.random.randint(0, len(te_imgs),
                                                    size=self.batch_size)
                     tr_accuracy = eval_node.eval(feed_dict={input_node: batch_img,
-                                                            label_node: tr_labels[batch_idx]})/self.batch_size
+                                                            label_node: tr_labels[batch_idx]})
                     te_accuracy = eval_node.eval(feed_dict={input_node: te_imgs[batch_idx2],
-                                                            label_node: te_labels[batch_idx2]})/self.batch_size
+                                                            label_node: te_labels[batch_idx2]})
                     l = loss_node.eval(feed_dict={input_node: batch_img,
                                                   one_hot_node: batch_one_hots})
                     print("iteration: " + str(i))
@@ -145,7 +146,7 @@ class mnistfc(if_mnist):
                     print("loss: " + str(l))
 
             final_te_accuracy = eval_node.eval(feed_dict={input_node: te_imgs,
-                                                          label_node: te_labels}) / te_labels.shape[0]
+                                                          label_node: te_labels})
             print("final test accuracy: " + str(final_te_accuracy))
             saver.save(sess, sess_file)
 
@@ -168,7 +169,7 @@ class mnistfc(if_mnist):
             graph = tf.get_default_graph()
 
             input_node = graph.get_tensor_by_name("input/x:0")
-            sm_node = graph.get_tensor_by_name("output/output:0")
+            sm_node = graph.get_tensor_by_name("output/sm:0")
 
             imgs = np.reshape(imgs, [len(imgs), self.ws*self.hs])
             result = sess.run(sm_node, feed_dict={input_node: imgs})

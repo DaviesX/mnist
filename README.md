@@ -8,5 +8,7 @@ python-mnist `pip3 install python-mnist`
 
 # result
 2 layer ANN with one hot encoding on Adamax optimizer
-28*28 -> 10*10 -> 5*5 -> 10
+
+28 x 28 -> 10 x 10 -> 5 x 5 -> 10
+
 test accuracy: 0.9764

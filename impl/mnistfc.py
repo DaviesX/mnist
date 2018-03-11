@@ -8,8 +8,7 @@ from ifmnist import if_mnist
 
 def img(ws: int, hs: int):
     with tf.name_scope("input"):
-        xi = tf.placeholder(tf.float32, shape=[None, ws, hs], name="x")
-        return tf.reshape(xi, shape=[-1, ws*hs])
+        return tf.placeholder(tf.float32, shape=[None, ws*hs], name="x")
 
 
 def one_hot(num_classes: int):
@@ -66,7 +65,7 @@ class mnistfc(if_mnist):
     """
 
     def __init__(self, ws=28, hs=28, num_classes=10,
-                 num_iters=20000, batch_size=1000):
+                 num_iters=1000000, batch_size=100):
         if_mnist.__init__(self)
         self.ws = ws
         self.hs = hs
@@ -117,6 +116,10 @@ class mnistfc(if_mnist):
         # start parameter fitting.
         saver = tf.train.Saver()
 
+        # fix shape
+        tr_imgs = np.reshape(tr_imgs, [len(tr_imgs), self.ws*self.hs])
+        te_imgs = np.reshape(te_imgs, [len(te_imgs), self.ws*self.hs])
+
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
             for i in range(self.num_iters):
@@ -126,7 +129,7 @@ class mnistfc(if_mnist):
                 batch_one_hots = tr_one_hots[batch_idx]
                 opt_node.run(feed_dict={input_node: batch_img,
                                         one_hot_node: batch_one_hots})
-                if i % 100 == 0:
+                if i % 1000 == 0:
                     # Evaluate current parameterization.
                     batch_idx2 = np.random.randint(0, len(te_imgs),
                                                    size=self.batch_size)
@@ -166,5 +169,7 @@ class mnistfc(if_mnist):
 
             input_node = graph.get_tensor_by_name("input/x:0")
             sm_node = graph.get_tensor_by_name("output/output:0")
+
+            imgs = np.reshape(imgs, [len(imgs), self.ws*self.hs])
             result = sess.run(sm_node, feed_dict={input_node: imgs})
             return result

@@ -14,22 +14,23 @@ def run(agent: if_mnist) -> None:
         dataset = mnist_dataset("./dataset")
         tr_imgs, tr_labels = dataset.load_training()
         te_imgs, te_labels = dataset.load_testing()
-        tr_imgs = np.reshape(tr_imgs, [len(tr_imgs), 28*28])
+        tr_imgs = np.array(tr_imgs)
         tr_labels = np.array(tr_labels)
-        te_imgs = np.reshape(te_imgs, [len(te_imgs), 28*28])
+        te_imgs = np.array(te_imgs)
         te_labels = np.array(te_labels)
 
         agent.fit(tr_imgs, tr_labels, te_imgs, te_labels,
                   "./" + agent.name() + ".ckpt")
     else:
         print("start inference process")
+        sys.argv.append("IMG_0081.PNG")
         if len(sys.argv) > 1:
             # process the image.
             test_file = sys.argv[1]
             test_img = cv2.imread(test_file, cv2.IMREAD_GRAYSCALE)
 
-            x = np.reshape(preprocess(test_img), [1, 28*28])
-            pmf = agent.infer(x, "./" + agent.name() + ".ckpt")
+            pmf = agent.infer(np.reshape(preprocess(test_img), [1, 28, 28]),
+                              "./" + agent.name() + ".ckpt")
             best_prob = np.max(pmf)
             best_label = np.where(pmf[0, :] == best_prob)[0]
             print("best label: " + str(best_label))
@@ -49,8 +50,8 @@ def run(agent: if_mnist) -> None:
 
                 # Display the resulting frame
                 cv2.imshow('frame', test_img)
-                x = np.reshape(preprocess(test_img), [1, 28*28])
-                pmf = agent.infer(x, "./" + agent.name() + ".ckpt")
+                pmf = agent.infer(np.reshape(preprocess(test_img), [1, 28, 28]),
+                                  "./" + agent.name() + ".ckpt")
                 best_prob = np.max(pmf)
                 best_label = np.where(pmf[0, :] == best_prob)[0]
                 print("best label: " + str(best_label))

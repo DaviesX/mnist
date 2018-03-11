@@ -9,6 +9,8 @@ class if_mnist:
         pass
 
     def name(self) -> str:
+        """model name.
+        """
         pass
 
     def fit(self,

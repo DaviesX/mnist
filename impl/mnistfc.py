@@ -6,9 +6,10 @@ from enc import to_one_hot
 from ifmnist import if_mnist
 
 
-def img(xs: int):
+def img(ws: int, hs: int):
     with tf.name_scope("input"):
-        return tf.placeholder(tf.float32, shape=[None, xs], name="x")
+        xi = tf.placeholder(tf.float32, shape=[None, ws, hs], name="x")
+        return tf.reshape(xi, shape=[-1, ws*hs])
 
 
 def one_hot(num_classes: int):
@@ -61,10 +62,7 @@ def evaluate(output_node, label_node):
 
 
 class mnistfc(if_mnist):
-    """[summary]
-
-    Arguments:
-        if_mnist {[type]} -- [description]
+    """2-layer fully connected ANN model.
     """
 
     def __init__(self, ws=28, hs=28, num_classes=10,
@@ -77,6 +75,8 @@ class mnistfc(if_mnist):
         self.batch_size = batch_size
 
     def name(self) -> str:
+        """model name.
+        """
         return "fc2"
 
     def fit(self,
@@ -98,7 +98,7 @@ class mnistfc(if_mnist):
                 -- where to checkpoint the model params.
         """
         # construct the architecture.
-        input_node = img(int(self.ws*self.hs))
+        input_node = img(self.ws, self.hs)
         one_hot_node = one_hot(self.num_classes)
         label_node = label()
         output_node = nn_layers(input_node,

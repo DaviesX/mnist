@@ -81,9 +81,9 @@ def nn_layers(img_node, keep_prob_node,
         w4 = tf.Variable(tf.truncated_normal([fc1s, num_classes], stddev=1.0 / m.sqrt(float(fc1s))),
                          name="w")
         b4 = tf.Variable(tf.zeros([num_classes]), name="b")
-        # output_node = tf.nn.softmax(tf.add(tf.matmul(fc_drop, w4),
-        #                                   b4), name="output")
-        return tf.add(tf.matmul(fc_drop, w4), b4, name="output")
+        output_node = tf.add(tf.matmul(fc_drop, w4), b4)
+        sm_node = tf.nn.softmax(output_node, name="sm")
+        return output_node, sm_node
 
 
 def loss(output_node, one_hot_node):
@@ -100,7 +100,7 @@ def opt(loss_node, learning_rate: float):
 
 def evaluate(output_node, label_node):
     correct = tf.equal(tf.argmax(output_node, axis=1), label_node)
-    return tf.reduce_sum(tf.cast(correct, tf.int32))
+    return tf.reduce_mean(tf.cast(correct, tf.float32))
 
 
 class mnist_cnn(if_mnist):
@@ -144,12 +144,12 @@ class mnist_cnn(if_mnist):
         one_hot_node = one_hot(self.num_classes)
         label_node = label()
         keep_prob_node = keep_prob()
-        output_node = nn_layers(input_node, keep_prob_node,
-                                self.ws, self.hs,
-                                5, 1, 32, 2,
-                                5, 1, 64, 2,
-                                1024,
-                                self.num_classes)
+        output_node, _ = nn_layers(input_node, keep_prob_node,
+                                   self.ws, self.hs,
+                                   5, 1, 32, 2,
+                                   5, 1, 64, 2,
+                                   1024,
+                                   self.num_classes)
         loss_node = loss(output_node, one_hot_node)
         opt_node = opt(loss_node, 0.001)
         eval_node = evaluate(output_node, label_node)
@@ -180,10 +180,10 @@ class mnist_cnn(if_mnist):
                                                    size=self.batch_size)
                     tr_accuracy = eval_node.eval(feed_dict={input_node: batch_img,
                                                             label_node: tr_labels[batch_idx],
-                                                            keep_prob_node: 1.0})/self.batch_size
+                                                            keep_prob_node: 1.0})
                     te_accuracy = eval_node.eval(feed_dict={input_node: te_imgs[batch_idx2],
                                                             label_node: te_labels[batch_idx2],
-                                                            keep_prob_node: 1.0})/self.batch_size
+                                                            keep_prob_node: 1.0})
                     l = loss_node.eval(feed_dict={input_node: batch_img,
                                                   one_hot_node: batch_one_hots,
                                                   keep_prob_node: 1.0})
@@ -196,7 +196,7 @@ class mnist_cnn(if_mnist):
 
             final_te_accuracy = eval_node.eval(feed_dict={input_node: te_imgs,
                                                           label_node: te_labels,
-                                                          keep_prob_node: 1.0}) / te_labels.shape[0]
+                                                          keep_prob_node: 1.0})
             print("final test accuracy: " + str(final_te_accuracy))
 
     def infer(self, imgs: np.ndarray, sess_file: str) -> np.ndarray:
@@ -219,7 +219,7 @@ class mnist_cnn(if_mnist):
 
             input_node = graph.get_tensor_by_name("input/x:0")
             keep_prob_node = graph.get_tensor_by_name("hyper/keep_prob:0")
-            output_node = graph.get_tensor_by_name("output/output:0")
+            output_node = graph.get_tensor_by_name("output/sm:0")
 
             imgs = np.reshape(imgs, [len(imgs), self.ws, self.hs, 1])
             result = sess.run(output_node, feed_dict={input_node: imgs,

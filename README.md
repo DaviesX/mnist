@@ -4,7 +4,10 @@ dataset can be downloaded from http://yann.lecun.com/exdb/mnist/ the program wil
 # additional packages
 tensorflow `pip3 install tensorflow`
 
+opencv2 `pip3 install opencv-python`
+
 python-mnist `pip3 install python-mnist`
+
 
 # result
 2 layer ANN with L2 soft max loss on Adamax optimizer

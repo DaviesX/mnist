@@ -9,7 +9,7 @@ python-mnist `pip3 install python-mnist`
 # result
 2 layer ANN with L2 soft max loss on Adamax optimizer
 
-28 x 28 fc -> 10 x 10 c -> 5 x 5 fc -> 10
+28 x 28 fc -> 10 x 10 fc -> 5 x 5 fc -> 10
 
 test accuracy: 0.9778
 

@@ -17,4 +17,4 @@ test accuracy: 0.9778
 
 5 x 5 x 32 conv -> max pool 2 x 2 -> 5 x 5 x 64 conv2 -> 1024 fc -> drop out 50% -> 10
 
-test accuracy: 0.9813
+test accuracy: 0.9833

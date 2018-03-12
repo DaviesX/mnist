@@ -24,7 +24,6 @@ def run(agent: if_mnist) -> None:
                   "./" + agent.name() + ".ckpt")
     else:
         print("start inference process")
-        sys.argv.append("IMG_0081.PNG")
         if len(sys.argv) > 1:
             # process the image.
             test_file = sys.argv[1]

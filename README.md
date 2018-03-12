@@ -13,6 +13,8 @@ python-mnist `pip3 install python-mnist`
 
 test accuracy: 0.9778
 
+-------------------------------------------------------------------------
+
 2 layer CNN with ce loss on Adamax optimizer
 
 5 x 5 x 32 conv -> max pool 2 x 2 -> 5 x 5 x 64 conv2 -> 1024 fc -> drop out 50% -> 10
